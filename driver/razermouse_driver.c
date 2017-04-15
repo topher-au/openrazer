@@ -85,6 +85,68 @@ struct razer_report razer_send_payload(struct usb_device *usb_dev, struct razer_
     return response_report;
 }
 
+/*
+ * Specific functions for ancient devices
+ *
+ */
+void deathadder3500_set_scroll_led_state(struct razer_mouse_device *device, unsigned int enabled)
+{
+    char data[4] = { 0 };
+
+    if (enabled == 1) {
+        device->da3500_lighting_bitfield |= 0x02;
+    } else {
+        device->da3500_lighting_bitfield &= ~(0x02);
+    }
+
+    data[0] = device->da3500_poll_bitfield;
+    data[3] = device->da3500_lighting_bitfield;
+
+    mutex_lock(&device->lock);
+    razer_send_control_msg_old_device(device->usb_dev, &data[0], 0x10, 0x00, 4, 3000, 3000);
+    mutex_unlock(&device->lock);
+}
+void deathadder3500_set_logo_led_state(struct razer_mouse_device *device, unsigned int enabled)
+{
+    char data[4] = { 0 };
+
+    if (enabled == 1) {
+        device->da3500_lighting_bitfield |= 0x01;
+    } else {
+        device->da3500_lighting_bitfield &= ~(0x01);
+    }
+
+    data[0] = device->da3500_poll_bitfield;
+    data[3] = device->da3500_lighting_bitfield;
+
+    mutex_lock(&device->lock);
+    razer_send_control_msg_old_device(device->usb_dev, &data[0], 0x10, 0x00, 4, 3000, 3000);
+    mutex_unlock(&device->lock);
+}
+void deathadder3500_set_poll_rate(struct razer_mouse_device *device, unsigned short poll_rate)
+{
+    char data[4] = { 0 };
+
+    if (poll_rate == 1000) {
+        device->da3500_poll_bitfield = 1;
+    } else if (poll_rate == 500) {
+        device->da3500_poll_bitfield = 2;
+    } else if (poll_rate == 125) {
+        device->da3500_poll_bitfield = 3;
+    } else {
+        device->da3500_poll_bitfield = 2;
+    }
+
+    data[0] = device->da3500_poll_bitfield;
+    data[3] = device->da3500_lighting_bitfield;
+
+    mutex_lock(&device->lock);
+    razer_send_control_msg_old_device(device->usb_dev, &data[0], 0x10, 0x00, 4, 3000, 3000);
+    mutex_unlock(&device->lock);
+}
+
+
+
 
 /*
  * New functions
@@ -626,6 +688,21 @@ static ssize_t razer_attr_read_poll_rate(struct device *dev, struct device_attri
     unsigned short polling_rate = 0;
 
     switch(device->usb_pid) {
+    case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+        switch(device->da3500_poll_bitfield) {
+        case 0x01:
+            polling_rate = 1000;
+            break;
+        case  0x02:
+            polling_rate = 500;
+            break;
+        case  0x03:
+            polling_rate = 125;
+            break;
+        }
+        return sprintf(buf, "%d\n", polling_rate);
+        break;
+
     case USB_DEVICE_ID_RAZER_NAGA_HEX_V2:
     case USB_DEVICE_ID_RAZER_DEATHADDER_ELITE:
         report.transaction_id.id = 0x3f;
@@ -635,7 +712,9 @@ static ssize_t razer_attr_read_poll_rate(struct device *dev, struct device_attri
     if(device->usb_pid == USB_DEVICE_ID_RAZER_OROCHI_2011) {
         response_report.arguments[0] = device->orochi2011_poll;
     } else {
+        mutex_lock(&device->lock);
         response_report = razer_send_payload(device->usb_dev, &report);
+        mutex_unlock(&device->lock);
     }
 
     switch(response_report.arguments[0]) {
@@ -665,6 +744,10 @@ static ssize_t razer_attr_write_poll_rate(struct device *dev, struct device_attr
     struct razer_report report = razer_chroma_misc_set_polling_rate(polling_rate);
 
     switch(device->usb_pid) {
+    case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+        deathadder3500_set_poll_rate(device, polling_rate);
+        return count;
+
     case USB_DEVICE_ID_RAZER_OROCHI_2011:
         device->orochi2011_poll = polling_rate;
         report = razer_chroma_misc_set_orochi2011_poll_dpi(device->orochi2011_poll, device->orochi2011_dpi, device->orochi2011_dpi);
@@ -678,7 +761,9 @@ static ssize_t razer_attr_write_poll_rate(struct device *dev, struct device_attr
         break;
     }
 
+    mutex_lock(&device->lock);
     razer_send_payload(device->usb_dev, &report);
+    mutex_unlock(&device->lock);
 
     return count;
 }
@@ -1233,9 +1318,16 @@ static ssize_t razer_attr_write_scroll_led_state(struct device *dev, struct devi
         }
         report = razer_chroma_misc_set_orochi2011_led(device->orochi2011_led);
         break;
+
+    case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+        deathadder3500_set_scroll_led_state(device, enabled);
+        return count;
+        break;
     }
 
+    mutex_lock(&device->lock);
     razer_send_payload(device->usb_dev, &report);
+    mutex_unlock(&device->lock);
 
     return count;
 }
@@ -1254,8 +1346,18 @@ static ssize_t razer_attr_read_scroll_led_state(struct device *dev, struct devic
     case USB_DEVICE_ID_RAZER_OROCHI_2011:
         return sprintf(buf, "%d\n", device->orochi2011_led & 0b00000001);
         break;
+
+    case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+        if((device->da3500_lighting_bitfield & 0x02) == 0x02) {
+            return sprintf(buf, "1\n");
+        }
+        return sprintf(buf, "0\n");
+        break;
+
     default:
+        mutex_lock(&device->lock);
         response = razer_send_payload(device->usb_dev, &report);
+        mutex_unlock(&device->lock);
         break;
     }
 
@@ -1281,9 +1383,16 @@ static ssize_t razer_attr_write_logo_led_state(struct device *dev, struct device
         }
         report = razer_chroma_misc_set_orochi2011_led(device->orochi2011_led);
         break;
+
+    case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+        deathadder3500_set_logo_led_state(device, enabled);
+        return count;
+        break;
     }
 
+    mutex_lock(&device->lock);
     razer_send_payload(device->usb_dev, &report);
+    mutex_unlock(&device->lock);
 
     return count;
 }
@@ -1302,8 +1411,18 @@ static ssize_t razer_attr_read_logo_led_state(struct device *dev, struct device_
     case USB_DEVICE_ID_RAZER_OROCHI_2011:
         return sprintf(buf, "%d\n", (device->orochi2011_led & 0b00000010) >> 1);
         break;
+
+    case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+        if((device->da3500_lighting_bitfield & 0x01) == 0x01) {
+            return sprintf(buf, "1\n");
+        }
+        return sprintf(buf, "0\n");
+        break;
+
     default:
+        mutex_lock(&device->lock);
         response = razer_send_payload(device->usb_dev, &report);
+        mutex_unlock(&device->lock);
         break;
     }
 
@@ -1993,6 +2112,10 @@ void razer_mouse_init(struct razer_mouse_device *dev, struct usb_interface *intf
     // Setup orochi2011
     dev->orochi2011_dpi = 0x4c;
     dev->orochi2011_poll = 500;
+
+    // Setup default values for DeathAdder 3500
+    dev->da3500_lighting_bitfield = 3; // Lights up all lights
+    dev->da3500_poll_bitfield = 1; // Freq 1000
 }
 
 /**
@@ -2185,6 +2308,12 @@ static int razer_mouse_probe(struct hid_device *hdev, const struct hid_device_id
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_state);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_led_state);
             CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_backlight_led_state);
+            break;
+
+        case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_poll_rate);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_scroll_led_state);
+            CREATE_DEVICE_FILE(&hdev->dev, &dev_attr_logo_led_state);
             break;
 
         case USB_DEVICE_ID_RAZER_ABYSSUS_V2:
@@ -2428,6 +2557,12 @@ static void razer_mouse_disconnect(struct hid_device *hdev)
             device_remove_file(&hdev->dev, &dev_attr_scroll_led_state);
             device_remove_file(&hdev->dev, &dev_attr_logo_led_state);
             device_remove_file(&hdev->dev, &dev_attr_backlight_led_state);
+            break;
+
+        case USB_DEVICE_ID_RAZER_DEATHADDER_3500:
+            device_remove_file(&hdev->dev, &dev_attr_poll_rate);
+            device_remove_file(&hdev->dev, &dev_attr_scroll_led_state);
+            device_remove_file(&hdev->dev, &dev_attr_logo_led_state);
             break;
 
         case USB_DEVICE_ID_RAZER_ABYSSUS_V2:

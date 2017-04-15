@@ -134,6 +134,10 @@ struct razer_mouse_device {
     unsigned char orochi2011_led;
     unsigned char orochi2011_dpi;
     unsigned short orochi2011_poll;
+
+    // For deathadder3500, uses OR logic so need to remember last values. Part of a 4byte payload
+    char da3500_lighting_bitfield;
+    char da3500_poll_bitfield;
 };
 
 // Mamba Key Location
