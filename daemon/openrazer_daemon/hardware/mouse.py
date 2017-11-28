@@ -865,3 +865,28 @@ class RazerAbyssus1800(__RazerDevice):
     DPI_MAX = 1800
 
     # TODO: Find device images
+
+
+class RazerLanceheadTE(__RazerDevice):
+    """
+    Class for the Razer Lancehead Tournament Edition (Wired)
+    """
+    EVENT_FILE_REGEX = re.compile(r'.*Razer_Lancehead_TE-if0(1|2)-event-kbd')
+
+    USB_VID = 0x1532
+    USB_PID = 0x0060
+    #HAS_MATRIX = True
+
+    METHODS = ['get_device_type_mouse', 'set_wave_effect',
+               'set_static_effect', 'set_spectrum_effect', 'set_reactive_effect', 'set_none_effect', 'set_breath_random_effect',
+               'set_breath_single_effect', 'max_dpi']
+
+    # TODO: Need to find proper images (transparent bg)
+
+    # RAZER_URLS = {
+    #    "top_img": "https://d1urewwzb2qwii.cloudfront.net/sys-master/root/h5e/h0b/8888236245022",
+    #    "side_img": "https://d1urewwzb2qwii.cloudfront.net/sys-master/root/h28/hc5/8888234311710",
+    #    "perspective_img": "https://d1urewwzb2qwii.cloudfront.net/sys-master/root/h84/hb3/8888234868766"
+    # }
+
+    DPI_MAX = 16000
