@@ -274,6 +274,7 @@ static ssize_t razer_attr_write_mode_none(struct device *dev, struct device_attr
         break;
 
     case USB_DEVICE_ID_RAZER_NAGA_CHROMA:
+    case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
         report = razer_chroma_mouse_extended_matrix_effect_none(VARSTORE, BACKLIGHT_LED);
         break;
 
@@ -305,6 +306,7 @@ static ssize_t razer_attr_write_mode_custom(struct device *dev, struct device_at
 
     case USB_DEVICE_ID_RAZER_DEATHADDER_ELITE:
     case USB_DEVICE_ID_RAZER_NAGA_CHROMA:
+    case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
         report = razer_chroma_extended_matrix_effect_custom_frame();
         report.transaction_id.id = 0x3f;
         break;
@@ -334,6 +336,7 @@ static ssize_t razer_attr_write_mode_static(struct device *dev, struct device_at
     if(count == 3) {
         switch (usb_dev->descriptor.idProduct) {
         case USB_DEVICE_ID_RAZER_NAGA_HEX_V2:
+        case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
             report = razer_chroma_mouse_extended_matrix_effect_static(VARSTORE, BACKLIGHT_LED, (struct razer_rgb*)&buf[0]);
             report.transaction_id.id = 0x3f;
             break;
@@ -391,6 +394,7 @@ static ssize_t razer_attr_write_mode_spectrum(struct device *dev, struct device_
         break;
 
     case USB_DEVICE_ID_RAZER_NAGA_CHROMA:
+    case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
         report = razer_chroma_mouse_extended_matrix_effect_spectrum(VARSTORE, BACKLIGHT_LED);
         break;
 
@@ -425,6 +429,7 @@ static ssize_t razer_attr_write_mode_reactive(struct device *dev, struct device_
             break;
 
         case USB_DEVICE_ID_RAZER_NAGA_CHROMA:
+        case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
             report = razer_chroma_mouse_extended_matrix_effect_reactive(VARSTORE, BACKLIGHT_LED, speed, (struct razer_rgb*)&buf[1]);
             break;
 
@@ -455,6 +460,7 @@ static ssize_t razer_attr_write_mode_breath(struct device *dev, struct device_at
     switch (usb_dev->descriptor.idProduct) { // TODO refactor to have 2 methods to split out the breathing crap
     case USB_DEVICE_ID_RAZER_NAGA_HEX_V2:
     case USB_DEVICE_ID_RAZER_NAGA_CHROMA:
+    case USB_DEVICE_ID_RAZER_LANCEHEAD_TE_WIRED:
         switch(count) {
         case 3: // Single colour mode
             report = razer_chroma_mouse_extended_matrix_effect_breathing_single(VARSTORE, BACKLIGHT_LED, (struct razer_rgb*)&buf[0]);
