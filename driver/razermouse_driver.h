@@ -129,6 +129,7 @@ struct razer_mouse_device {
     unsigned char effect;
     char name[128];
     char phys[64];
+    u8 btn_states;
 
     struct usb_device *usb_dev;
     struct mutex lock;

@@ -1927,6 +1927,24 @@ static DEVICE_ATTR(backlight_led_state,            0660, razer_attr_read_backlig
 static int razer_raw_event(struct hid_device *hdev, struct hid_report *report, u8 *data, int size)
 {
     struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
+    struct razer_mouse_device *dev = hid_get_drvdata(hdev);
+    u8 btn_index;
+    u8 btn_state;
+
+    // Event for handling mouse buttons is 8 bytes, the first byte is a set of binary flags representing each button.
+    // In device mode the wheel tilt will set flags for buttons 6 and 7. This tracks the state of each button and fires
+    // the appropriate input_event when it changes.
+    if(size == 8 && intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_MOUSE) {
+        for(btn_index = 0; btn_index < 8; btn_index++) {
+            btn_state = data[0] & (1 << btn_index);
+            if( (dev->btn_states & (1 << btn_index)) != btn_state ) {
+                dev->btn_states = (dev->btn_states & (0xFF ^ (1 << btn_index))) | btn_state;
+                input_event(dev->inputdev, EV_MSC, MSC_SCAN, 0x90001 + btn_index);
+                input_event(dev->inputdev, EV_KEY, BTN_MOUSE + btn_index, btn_state != 0);
+                return 1;
+            }
+        }
+    }
 
     // The event were looking for is 16 bytes long and starts with 0x04
     if(intf->cur_altsetting->desc.bInterfaceProtocol == USB_INTERFACE_PROTOCOL_KEYBOARD && size == 16 && data[0] == 0x04) {
