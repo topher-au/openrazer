@@ -123,7 +123,7 @@
 #define RAZER_MOUSE_WAIT_MAX_US 800
 
 struct razer_mouse_device {
-    //struct input_dev *dev;
+    struct input_dev *inputdev;
     struct usb_device *usbdev;
     struct hid_device *hiddev;
     unsigned char effect;

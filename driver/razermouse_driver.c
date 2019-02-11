@@ -1968,6 +1968,32 @@ static int razer_raw_event(struct hid_device *hdev, struct hid_report *report, u
 }
 
 /**
+ * Mouse configuration function
+ * @input_configured: invoked just before the device is registered
+ */
+static int razer_mouse_configure(struct hid_device *hdev, struct hid_input *hidinput) {
+    struct razer_mouse_device *dev = hid_get_drvdata(hdev);
+    struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
+    struct usb_device *usb_dev = interface_to_usbdev(intf);
+
+    // Keeping track of the input device here makes it easier to send events later
+    dev->inputdev = hidinput->input;
+
+    // We need to call input_set_capability for the additional buttons
+    // before the kernel will let us fire input events for them
+    // Actual button configurations are likely to differ between devices(?)
+    switch(usb_dev->descriptor.idProduct) {
+        case USB_DEVICE_ID_RAZER_NAGA_2014:
+            input_set_capability(dev->inputdev, EV_KEY, BTN_FORWARD);
+            input_set_capability(dev->inputdev, EV_KEY, BTN_BACK);
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+/**
  * Mouse init function
  */
 void razer_mouse_init(struct razer_mouse_device *dev, struct usb_interface *intf, struct hid_device *hdev)
@@ -2519,12 +2545,12 @@ MODULE_DEVICE_TABLE(hid, razer_devices);
  * Describes the contents of the driver
  */
 static struct hid_driver razer_mouse_driver = {
-    .name      = "razermouse",
-    .id_table  = razer_devices,
-    .probe     = razer_mouse_probe,
-    .remove    = razer_mouse_disconnect,
-
-    .raw_event = razer_raw_event,
+    .name               = "razermouse",
+    .id_table           = razer_devices,
+    .probe              = razer_mouse_probe,
+    .remove             = razer_mouse_disconnect,
+    .input_configured   = razer_mouse_configure,
+    .raw_event          = razer_raw_event,
 };
 
 module_hid_driver(razer_mouse_driver);
